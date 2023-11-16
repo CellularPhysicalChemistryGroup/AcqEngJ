@@ -1110,4 +1110,59 @@ public class AcqEngMetadata {
          throw new RuntimeException("couldnt create axes");
       }
    }
+   
+   
+   //CPCGTools added
+   public static final String AXES_WELL = "well";
+   public static final String NOISE_GROUP = "NoiseGroup";
+   public static final String TRIGGERTIMES = "TriggerTimes";
+   //
+   
+   /**
+    * Add the core set of image metadata that should be present in any
+    * acquisition 
+    * 
+    * //CPCGTools added 
+    * "double exposure" -> "int triggerTimes" in calling method
+    * "AcqEngMetadata.setExposure(tags, exposure);" -> AcqEngMetadata.setTriggerTimes(tags, triggerTimes);"
+    *
+    * @param tags image metadata
+    * @param event event
+    * @param elapsed_ms time since acq start
+    * @param triggerTimes camera number of triggers counted during exposure
+    */
+   public static void addImageMetadata(JSONObject tags, AcquisitionEvent event,
+            long elapsed_ms, int triggerTimes) {
+      try {
+          AcqEngMetadata.addImageMetadata(tags, event, elapsed_ms, -1);
+
+         AcqEngMetadata.setTriggerTimes(tags, triggerTimes);
+
+      } catch (Exception e) {
+         e.printStackTrace();
+         throw new RuntimeException("Problem adding image metadata");
+      }
+   }
+   
+   public static void setTriggerTimes(JSONObject map, int tt) {
+      try {
+         map.put(TRIGGERTIMES, tt);
+      } catch (JSONException ex) {
+         throw new RuntimeException("could not set trigger times");
+      }
+   }
+
+   public static boolean hasTriggerTimes(JSONObject map) {
+      return map.has(TRIGGERTIMES);
+   }
+
+   public static int getTriggerTimes(JSONObject map) {
+      try {
+         return map.getInt(TRIGGERTIMES);
+      } catch (JSONException ex) {
+         throw new RuntimeException("trigger times tag missing");
+
+      }
+   }
+   //
 }

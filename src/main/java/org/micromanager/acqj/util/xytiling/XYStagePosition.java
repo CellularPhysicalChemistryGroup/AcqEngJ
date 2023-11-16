@@ -37,6 +37,10 @@ public class XYStagePosition {
    //These are conveniences for determining where this position is in coordinates
    //of the XY stage
    private Integer gridRow_ = null, gridCol_ = null;
+   
+   //CPCGTools added
+   private String wellLabel_=null;
+   //
 
    /**
     * for abitrary positions not neccessarily in a grid
@@ -59,6 +63,29 @@ public class XYStagePosition {
       gridRow_ = gridRow;
       label_ = "Grid_" + gridCol + "_" + gridRow;
    }
+   
+   //CPCGTools added
+    public XYStagePosition(Point2D.Double stagePosCenter, int gridRow, int gridCol,String wellLabel) {
+      label_ = "";
+      center_ = stagePosCenter;
+      if (Engine.getCore().getXYStageDevice().equals("")) {
+         throw new RuntimeException("Core XY stage device undefined");
+      }
+      wellLabel_=wellLabel;
+      gridCol_ = gridCol;
+      gridRow_ = gridRow;
+      label_ = "Well_"+wellLabel_+"_Grid_" + gridCol + "_" + gridRow;
+    }
+    
+    public String getWellLabel(){
+       return wellLabel_;
+    }
+    
+    public void setWellName(String newName) {
+      wellLabel_ = newName;
+    }
+    
+   //
 
    /**
     * If positions are laid out in a grid, get the stage coordinates of the

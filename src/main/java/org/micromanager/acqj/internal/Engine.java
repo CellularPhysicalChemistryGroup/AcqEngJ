@@ -461,7 +461,21 @@ public class Engine {
             break;
          }
          double exposure;
-
+         //CPCG added
+         int triggerTimes;
+         String triggerConfig;
+         try {
+            triggerConfig = event.getConfigTriggerGroup()== null ? core_.getCurrentConfig("TriggerMode") : event.getConfigTriggerGroup();
+         } catch (Exception ex) {
+            triggerConfig = "NOT FOUND";//throw new RuntimeException("Couldnt get TriggerMode form core");
+         }
+         try {
+            triggerTimes = event.getTriggerTimes() == null ? Integer.valueOf(core_.getProperty("HamamatsuHam_DCAM", "TRIGGER TIMES")): event.getTriggerTimes();
+         } catch (Exception ex) {
+            triggerTimes = 0;//throw new RuntimeException("Couldnt get TriggerTimes form core");
+         }
+         //
+         
          try {
             exposure = event.getExposure() == null ? core_.getExposure() : event.getExposure();
          } catch (Exception ex) {
@@ -582,9 +596,15 @@ public class Engine {
                   correspondingEvent = multiCamAdapterCameraEventLists.get(actualCamIndex).remove(0);
                }
             }
-            // add standard metadata
-            AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
-                    currentTime - correspondingEvent.acquisition_.getStartTime_ms(), exposure);
+            // add standard metadata - CPCGTools edited
+            if (triggerConfig.equals("Edge-Global-Reset")){
+                AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
+                        currentTime - correspondingEvent.acquisition_.getStartTime_ms(), exposure);
+            }else{
+                AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
+                        currentTime - correspondingEvent.acquisition_.getStartTime_ms(), triggerTimes);
+
+            }
             // add user metadata specified in the event
             try {
                correspondingEvent.acquisition_.addTagsToTaggedImage(ti.tags, correspondingEvent.getTags());
@@ -871,6 +891,16 @@ public class Engine {
                   if (event.getExposure() != null) {
                      core_.setExposure(event.getExposure());
                   }
+                  //CPCGTools added
+                  //set trigger times - Maybe this should be moved... it could be slowing down the camera instead could just rely on check to see if it has changed....
+                     if (event.getTriggerTimes() != null){
+                         try {
+                            core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",event.getTriggerTimes());
+                         } catch (java.lang.Exception ex){
+                         //JAR: HACK BEWARE
+                         }
+                     }
+                     //
                   //set other channel props
                   core_.setConfig(currentGroup, currentConfig);
                   // TODO: haven't tested if this is actually needed
@@ -891,6 +921,7 @@ public class Engine {
                   }
                }
             } catch (Exception ex) {
+                //CPCGTools commented the below items... not going to do for consistency
                ex.printStackTrace();
                throw new HardwareControlException(ex.getMessage());
             }
@@ -921,6 +952,89 @@ public class Engine {
          }
       }, "Changing exposure");
 
+      //CPCGTools added
+         /////////////////////////////Camera trigger times//////////////////////////////////////////////
+         loopHardwareCommandRetries(new Runnable() {
+            @Override
+            public void run() {
+               try {  
+                Integer currentTriggerTimes = event.getTriggerTimes();
+                Integer prevTriggerTimes = lastEvent_ == null ? null : lastEvent_.getTriggerTimes();
+                boolean changeTriggerTimes = currentTriggerTimes != null &&
+                      (prevTriggerTimes == null || !prevTriggerTimes.equals(currentTriggerTimes));
+                if (changeTriggerTimes) {
+                   core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",currentTriggerTimes);
+                }
+               } catch (Exception ex) {
+                    //JAR: HACK BEWARE
+                    //throw new HardwareControlException(ex.getMessage());
+               }
+              
+            }
+         }, "Changing trigger times");
+         
+         
+         /////////////////////////////Laser Power//////////////////////////////////////////////
+         loopHardwareCommandRetries(new Runnable() {
+            @Override
+            public void run() {
+               try {  
+                String[] currentLaserProperties = event.getLaserProperties();
+                String[] prevLaserProperties = lastEvent_ == null ? null : lastEvent_.getLaserProperties();
+                boolean changeLaserProperties = currentLaserProperties != null &&
+                      (prevLaserProperties == null || !Arrays.equals(prevLaserProperties, currentLaserProperties));
+                if (changeLaserProperties) {
+                   core_.setProperty(currentLaserProperties[0],currentLaserProperties[1],currentLaserProperties[2]);
+                }
+               } catch (Exception ex) {
+                    //JAR: HACK BEWARE
+                    //throw new HardwareControlException(ex.getMessage());
+               }
+
+            }
+         }, "Changing Laser Power");
+         
+         
+         /////////////////////////////Trigger Mode - need to fix this.... preset Group I think I did this wrong but it should work OK//////////////////////////////////////////////
+         loopHardwareCommandRetries(new Runnable() {
+            @Override
+            public void run() {
+               try {  
+                String currentTriggerMode = event.getConfigTriggerPreset();
+                String prevTriggerMode = lastEvent_ == null ? null : lastEvent_.getConfigTriggerPreset();
+                boolean changeTriggerMode = currentTriggerMode != null &&
+                      (prevTriggerMode == null || !prevTriggerMode.equals(currentTriggerMode));
+                if (changeTriggerMode) {
+                   core_.setConfig("TriggerMode",currentTriggerMode);
+                }
+               } catch (Exception ex) {
+                    //JAR: HACK BEWARE
+                    //throw new HardwareControlException(ex.getMessage());
+               }
+
+            }
+         }, "Changing trigger times");
+         
+         /////////////////////////////Noise mode - need to fix this.... preset Group I think I did this wrong but it should work OK//////////////////////////////////////////////
+         loopHardwareCommandRetries(new Runnable() {
+            @Override
+            public void run() {
+               try {  
+                String currentNoiseMode = event.getConfigNoisePreset();
+                String prevNoiseMode = lastEvent_ == null ? null : lastEvent_.getConfigNoisePreset();
+                boolean changeNoiseMode = currentNoiseMode != null &&
+                      (prevNoiseMode == null || !prevNoiseMode.equals(currentNoiseMode));
+                if (changeNoiseMode) {
+                   core_.setConfig("Camera Noise Mode",currentNoiseMode);
+                }
+               } catch (Exception ex) {
+                    //JAR: HACK BEWARE
+                    //throw new HardwareControlException(ex.getMessage());
+               }
+
+            }
+         }, "Changing Noise mode");
+       //
 
       /////////////////////////////   SLM    //////////////////////////////////////////////
       loopHardwareCommandRetries(new Runnable() {
@@ -1010,6 +1124,12 @@ public class Engine {
          if (nextEvent.isAcquisitionSequenceEndEvent() || nextEvent.isAcquisitionFinishedEvent()) {
             return false;
          }
+         //CPCGTools debug... commenting this out for now
+         /*
+         //JAR HACK!
+         if (nextEvent.acquisition_.isDebugMode()){return false;}
+         */
+         //
 
          AcquisitionEvent previousEvent = previousEvents.get(previousEvents.size() - 1);
 
@@ -1079,6 +1199,14 @@ public class Engine {
                   newSeqLength > core_.getExposureSequenceMaxLength(core_.getCameraDevice())) {
                return false;
             }
+            //CPCGTools added
+            //camera exposure
+            if (previousEvent.getTriggerTimes()!= null && nextEvent.getTriggerTimes() != null &&
+                  Integer.compare(previousEvent.getTriggerTimes(), nextEvent.getTriggerTimes()) != 0 &&
+                  !core_.isExposureSequenceable(core_.getCameraDevice())) {
+               return false;
+            }
+            //
          }
 
 

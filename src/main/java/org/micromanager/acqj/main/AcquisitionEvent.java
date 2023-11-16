@@ -86,6 +86,14 @@ public class AcquisitionEvent {
 
    //To specify end of acquisition or end of sequence
    private SpecialFlag specialFlag_;
+   
+   //CPCGTools added
+   private String configTriggerGroup_, configTriggerPreset_ = null;
+   private String configNoiseGroup_, configNoisePreset_ = null;
+   private Integer triggerTimes_ = null; //leave null to keep trigger times
+   private ThreeTuple laserInfo_ = null; //leave null to keep laser unchanged
+   //private boolean triggerSequenced_ = false, configGroupSequenced_ = false; <- to do?
+    //
 
    public AcquisitionEvent(AcquisitionAPI acq) {
       acquisition_ = (Acquisition) acq;
@@ -109,6 +117,11 @@ public class AcquisitionEvent {
       HashSet<Double> yPosSet = new HashSet<Double>();
       TreeSet<Double> exposureSet = new TreeSet<Double>();
       TreeSet<String> configSet = new TreeSet<String>();
+      //CPCGTools added
+      TreeSet<Integer> triggerTimesSet = new TreeSet<Integer>();
+      TreeSet<String> configTriggerSet = new TreeSet<String>();
+      TreeSet<String> configNoiseSet = new TreeSet<String>();
+      //
       for (int i = 0; i < sequence_.size(); i++) {
          if (sequence_.get(i).zPosition_ != null) {
             zPosSet.add(sequence_.get(i).zPosition_);
@@ -125,6 +138,17 @@ public class AcquisitionEvent {
          if (sequence_.get(i).configPreset_ != null) {
             configSet.add(sequence_.get(i).getConfigPreset());
          }
+//         //CPCGTools added ->Since none of these can be sequenced, I don't think this is relevent but not 100% sure.
+//         if (sequence_.get(i).triggerTimes_ != null) {
+//            triggerTimesSet.add(sequence_.get(i).getTriggerTimes());
+//         }
+//        if (sequence_.get(i).configTriggerPreset_ != null) {
+//              configTriggerSet.add(sequence_.get(i).getConfigTriggerPreset());
+//        }
+//        if (sequence_.get(i).configNoisePreset_ != null) {
+//              configNoiseSet.add(sequence_.get(i).getConfigNoisePreset());
+//        }
+//        //
       }
       //TODO: add SLM sequences
       exposureSequenced_ = exposureSet.size() > 1;
@@ -135,6 +159,18 @@ public class AcquisitionEvent {
       if (sequence_.get(0).exposure_ != null && !exposureSequenced_) {
          exposure_ = sequence.get(0).exposure_;
       };
+       //CPCGTools added -> Need triggerSequenced_.... can ask or simply do triggerSequenced = exposureSet.size() > 1; or simply just know that it is NOT going to be sequenced...
+       //
+//         if (sequence_.get(0).triggerTimes_ != null && !exposureSequenced_) {
+            triggerTimesSet.add(sequence_.get(0).getTriggerTimes());
+//         }
+//        if (sequence_.get(0).configTriggerPreset_ != null && !exposureSequenced_) {
+              configTriggerSet.add(sequence_.get(0).getConfigTriggerPreset());
+//        }
+//        if (sequence_.get(0).configNoisePreset_ != null && !exposureSequenced_) {
+              configNoiseSet.add(sequence_.get(0).getConfigNoisePreset());
+//        }
+        //
    }
 
    public AcquisitionEvent copy() {
@@ -154,6 +190,15 @@ public class AcquisitionEvent {
       e.camera_ = camera_;
       e.timeout_ms_ = timeout_ms_;
       e.setTags(tags_);
+      //CPCGTools added
+      e.configTriggerPreset_ = configTriggerPreset_;
+      e.configTriggerGroup_ = configTriggerGroup_;
+      e.configNoiseGroup_ = configNoiseGroup_;
+      e.configNoisePreset_= configNoisePreset_;
+      e.triggerTimes_=triggerTimes_;
+      e.exposure_=exposure_;//Not clear to me why this is not included.... -> don't have access....
+      e.laserInfo_ = laserInfo_;
+      //
       return e;
    }
 
@@ -208,6 +253,34 @@ public class AcquisitionEvent {
             configGroup.put( e.configPreset_);
             json.put("config_group", configGroup);
          }
+         //CPCGTools added 
+         if (e.hasConfigTriggerGroup()) {
+            JSONArray configTriggerGroup = new JSONArray();
+            configTriggerGroup.put( e.configTriggerGroup_);
+            configTriggerGroup.put( e.configTriggerPreset_);
+            json.put("config_trigger_group", configTriggerGroup);
+         }
+         
+         if (e.hasConfigNoiseGroup()) {
+            JSONArray configNoiseGroup = new JSONArray();
+            configNoiseGroup.put( e.configTriggerGroup_);
+            configNoiseGroup.put( e.configNoisePreset_);
+            json.put("config_noise_group", configNoiseGroup);
+         }
+         
+         if (e.triggerTimes_ != null) {
+            json.put("trigger_times", e.triggerTimes_);
+         }
+         
+         if (e.laserInfo_ != null) {
+            JSONArray laser = new JSONArray();
+            laser.put(e.laserInfo_.dev);
+            laser.put(e.laserInfo_.prop);
+            laser.put(e.laserInfo_.val);
+            json.put("laser_info", laser);
+         }
+         //
+         
 
          if (e.exposure_ != null) {
             json.put("exposure", e.exposure_);
@@ -331,6 +404,27 @@ public class AcquisitionEvent {
          if (json.has("timeout")) {
             event.timeout_ms_ = json.getDouble("timeout");
          }
+         
+         //CPCGTools added
+         // Config group for Trigger setting 
+         if (json.has("config_trigger_group")) {
+            event.configTriggerGroup_ = json.getJSONArray("config_trigger_group").getString(0);
+            event.configTriggerPreset_ = json.getJSONArray("config_trigger_group").getString(1);
+         }
+         
+         // Config group for Noise setting 
+         if (json.has("config_noise_group")) {
+            event.configNoiseGroup_ = json.getJSONArray("config_noise_group").getString(0);
+            event.configNoisePreset_ = json.getJSONArray("config_noise_group").getString(1);
+         }
+         
+         if (json.has("triggger_times")) {
+            event.triggerTimes_ = json.getInt("trigger_times");
+         }
+         
+         JSONArray laser = json.getJSONArray("laser_info");
+         event.laserInfo_ = new ThreeTuple(laser.getString(0), laser.getString(1), laser.getString(2));      
+         //
 
          if (json.has("stage_positions")) {
             JSONArray stagePositions = json.getJSONArray("stage_positions");
@@ -507,6 +601,65 @@ public class AcquisitionEvent {
    public void setProperty(String device, String property, String value) {
       properties_.add(new ThreeTuple(device, property, value));
    }
+   
+   //CPCGTools added
+   //JAR: I added various parameters here - not sure if all of them are necessary. 
+   public boolean hasConfigTriggerGroup() {
+      return configTriggerPreset_ != null && configTriggerGroup_ != null;
+   }
+
+   public String getConfigTriggerPreset() {
+      return configTriggerPreset_;
+   }
+
+   public String getConfigTriggerGroup() {
+      return configTriggerGroup_;
+   }
+
+   public void setConfigTriggerPreset(String config) {
+      configTriggerPreset_ = config;
+   }
+
+   public void setConfigTriggerGroup(String group) {
+      configTriggerGroup_ = group;
+   }
+   
+   public boolean hasConfigNoiseGroup() {
+      return configNoisePreset_ != null && configNoiseGroup_ != null;
+   }
+   
+   public String getConfigNoisePreset() {
+      return configNoisePreset_;
+   }
+
+   public String getConfigNoiseGroup() {
+      return configNoiseGroup_;
+   }
+   
+   public void setConfigNoisePreset(String config) {
+      configNoisePreset_ = config;
+   }
+
+   public void setConfigNoiseGroup(String group) {
+      configNoiseGroup_ = group;
+   }
+
+   public Integer getTriggerTimes() {
+      return triggerTimes_;
+   }
+   
+   public String[] getLaserProperties() {
+      return laserInfo_.toArray();
+   }
+
+   public void setTriggerTimes(int triggerTimes) {
+      triggerTimes_ = triggerTimes;
+   }
+
+   public void setLaserProperty(String device, String property, String value) {
+      laserInfo_ = new ThreeTuple(device, property, value);
+   }
+   //
 
    /**
     * Set the minimum start time in ms relative to when the acq started.
