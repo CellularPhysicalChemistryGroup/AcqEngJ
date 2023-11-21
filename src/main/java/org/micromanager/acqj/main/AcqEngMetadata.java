@@ -1134,7 +1134,7 @@ public class AcqEngMetadata {
    public static void addImageMetadata(JSONObject tags, AcquisitionEvent event,
             long elapsed_ms, int triggerTimes) {
       try {
-          AcqEngMetadata.addImageMetadata(tags, event, elapsed_ms, -1);
+          AcqEngMetadata.addImageMetadata(tags, event, elapsed_ms, 0.0);
 
          AcqEngMetadata.setTriggerTimes(tags, triggerTimes);
 
