@@ -92,7 +92,7 @@ public class AcquisitionEvent {
    private String configNoiseGroup_, configNoisePreset_ = null;
    private Integer triggerTimes_ = null; //leave null to keep trigger times
    private ThreeTuple laserInfo_ = null; //leave null to keep laser unchanged
-   //private boolean triggerSequenced_ = false, configGroupSequenced_ = false; <- to do?
+   private boolean triggerTimesSequenced_ = false, configTriggerGroupSequenced_ = false, configNoiseGroupSequenced_ = false;
     //
 
    public AcquisitionEvent(AcquisitionAPI acq) {
@@ -138,17 +138,17 @@ public class AcquisitionEvent {
          if (sequence_.get(i).configPreset_ != null) {
             configSet.add(sequence_.get(i).getConfigPreset());
          }
-//         //CPCGTools added ->Since none of these can be sequenced, I don't think this is relevent but not 100% sure.
-//         if (sequence_.get(i).triggerTimes_ != null) {
-//            triggerTimesSet.add(sequence_.get(i).getTriggerTimes());
-//         }
-//        if (sequence_.get(i).configTriggerPreset_ != null) {
-//              configTriggerSet.add(sequence_.get(i).getConfigTriggerPreset());
-//        }
-//        if (sequence_.get(i).configNoisePreset_ != null) {
-//              configNoiseSet.add(sequence_.get(i).getConfigNoisePreset());
-//        }
-//        //
+         //CPCGTools added ->Since none of these can be sequenced, I don't think this is relevent but not 100% sure.
+         if (sequence_.get(i).triggerTimes_ != null) {
+            triggerTimesSet.add(sequence_.get(i).getTriggerTimes());
+         }
+        if (sequence_.get(i).configTriggerPreset_ != null) {
+              configTriggerSet.add(sequence_.get(i).getConfigTriggerPreset());
+        }
+        if (sequence_.get(i).configNoisePreset_ != null) {
+              configNoiseSet.add(sequence_.get(i).getConfigNoisePreset());
+        }
+        //
       }
       //TODO: add SLM sequences
       exposureSequenced_ = exposureSet.size() > 1;
@@ -157,19 +157,19 @@ public class AcquisitionEvent {
       zSequenced_ = zPosSet.size() > 1;
       // set exposure time if it is provided and exposure is not sequenced
       if (sequence_.get(0).exposure_ != null && !exposureSequenced_) {
+            if (acquisition_.isDebugMode()) {
+                Engine.getCore().logMessage("CPCG log message hack #21" );
+            }
          exposure_ = sequence.get(0).exposure_;
       };
        //CPCGTools added -> Need triggerSequenced_.... can ask or simply do triggerSequenced = exposureSet.size() > 1; or simply just know that it is NOT going to be sequenced...
-       //
-//         if (sequence_.get(0).triggerTimes_ != null && !exposureSequenced_) {
-            triggerTimesSet.add(sequence_.get(0).getTriggerTimes());
-//         }
-//        if (sequence_.get(0).configTriggerPreset_ != null && !exposureSequenced_) {
-              configTriggerSet.add(sequence_.get(0).getConfigTriggerPreset());
-//        }
-//        if (sequence_.get(0).configNoisePreset_ != null && !exposureSequenced_) {
-              configNoiseSet.add(sequence_.get(0).getConfigNoisePreset());
-//        }
+       triggerTimesSequenced_ = triggerTimesSet.size() > 1;
+       configTriggerGroupSequenced_ = configTriggerSet.size() > 1;
+       configNoiseGroupSequenced_ = configNoiseSet.size() > 1;;
+        if (sequence_.get(0).triggerTimes_ != null && !triggerTimesSequenced_) {
+            triggerTimes_ = sequence_.get(0).getTriggerTimes();
+        }
+        //Do I need the other groups here?!?!
         //
    }
 

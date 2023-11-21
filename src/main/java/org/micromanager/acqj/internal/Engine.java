@@ -467,12 +467,14 @@ public class Engine {
          try {
             triggerConfig = event.getConfigTriggerGroup()== null ? core_.getCurrentConfig("TriggerMode") : event.getConfigTriggerGroup();
          } catch (Exception ex) {
-            triggerConfig = "NOT FOUND";//throw new RuntimeException("Couldnt get TriggerMode form core");
+            //triggerConfig = "NOT FOUND";
+            throw new RuntimeException("Couldnt get TriggerMode form core");
          }
          try {
             triggerTimes = event.getTriggerTimes() == null ? Integer.valueOf(core_.getProperty("HamamatsuHam_DCAM", "TRIGGER TIMES")): event.getTriggerTimes();
          } catch (Exception ex) {
-            triggerTimes = 0;//throw new RuntimeException("Couldnt get TriggerTimes form core");
+            //triggerTimes = 0;
+            throw new RuntimeException("Couldnt get TriggerTimes form core");
          }
          //
          
@@ -603,7 +605,6 @@ public class Engine {
             }else{
                 AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
                         currentTime - correspondingEvent.acquisition_.getStartTime_ms(), triggerTimes);
-
             }
             // add user metadata specified in the event
             try {
@@ -752,6 +753,7 @@ public class Engine {
 
 
          } catch (Exception ex) {
+            if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack 
             ex.printStackTrace();
             throw new HardwareControlException(ex.getMessage());
          }
@@ -788,6 +790,7 @@ public class Engine {
                   core_.waitForDevice(zStage);
                }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                throw new HardwareControlException(ex.getMessage());
             }
 
@@ -827,6 +830,7 @@ public class Engine {
                }
 //               }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                throw new HardwareControlException(ex.getMessage());
             }
 
@@ -865,6 +869,7 @@ public class Engine {
                   core_.waitForDevice(xyStage);
                }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                core_.logMessage(stackTraceToString(ex));
                ex.printStackTrace();
                throw new HardwareControlException(ex.getMessage());
@@ -921,7 +926,7 @@ public class Engine {
                   }
                }
             } catch (Exception ex) {
-                //CPCGTools commented the below items... not going to do for consistency
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                ex.printStackTrace();
                throw new HardwareControlException(ex.getMessage());
             }
@@ -946,6 +951,7 @@ public class Engine {
                   }
                }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                throw new HardwareControlException(ex.getMessage());
             }
 
@@ -958,17 +964,17 @@ public class Engine {
             @Override
             public void run() {
                try {  
-                Integer currentTriggerTimes = event.getTriggerTimes();
-                Integer prevTriggerTimes = lastEvent_ == null ? null : lastEvent_.getTriggerTimes();
-                boolean changeTriggerTimes = currentTriggerTimes != null &&
-                      (prevTriggerTimes == null || !prevTriggerTimes.equals(currentTriggerTimes));
-                if (changeTriggerTimes) {
-                   core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",currentTriggerTimes);
-                }
-               } catch (Exception ex) {
-                    //JAR: HACK BEWARE
-                    //throw new HardwareControlException(ex.getMessage());
-               }
+                    Integer currentTriggerTimes = event.getTriggerTimes();
+                    Integer prevTriggerTimes = lastEvent_ == null ? null : lastEvent_.getTriggerTimes();
+                    boolean changeTriggerTimes = currentTriggerTimes != null &&
+                          (prevTriggerTimes == null || !prevTriggerTimes.equals(currentTriggerTimes));
+                    if (changeTriggerTimes && (currentTriggerTimes>0)) {
+                       core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",currentTriggerTimes);
+                    }
+                   } catch (Exception ex) {
+                        if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
+                        throw new HardwareControlException(ex.getMessage());
+                   }
               
             }
          }, "Changing trigger times");
@@ -987,8 +993,8 @@ public class Engine {
                    core_.setProperty(currentLaserProperties[0],currentLaserProperties[1],currentLaserProperties[2]);
                 }
                } catch (Exception ex) {
-                    //JAR: HACK BEWARE
-                    //throw new HardwareControlException(ex.getMessage());
+                    if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
+                    throw new HardwareControlException(ex.getMessage());
                }
 
             }
@@ -1008,8 +1014,8 @@ public class Engine {
                    core_.setConfig("TriggerMode",currentTriggerMode);
                 }
                } catch (Exception ex) {
-                    //JAR: HACK BEWARE
-                    //throw new HardwareControlException(ex.getMessage());
+                    if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
+                    throw new HardwareControlException(ex.getMessage());
                }
 
             }
@@ -1028,8 +1034,8 @@ public class Engine {
                    core_.setConfig("Camera Noise Mode",currentNoiseMode);
                 }
                } catch (Exception ex) {
-                    //JAR: HACK BEWARE
-                    //throw new HardwareControlException(ex.getMessage());
+                    if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
+                    throw new HardwareControlException(ex.getMessage());
                }
 
             }
@@ -1051,6 +1057,7 @@ public class Engine {
                   }
                }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                throw new HardwareControlException(ex.getMessage());
             }
 
@@ -1066,6 +1073,7 @@ public class Engine {
                   core_.setProperty(s[0], s[1], s[2]);
                }
             } catch (Exception ex) {
+               if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                throw new HardwareControlException(ex.getMessage());
             }
 
@@ -1075,7 +1083,7 @@ public class Engine {
       //keep track of last event to know what state the hardware was in without having to query it
       lastEvent_ = event.getSequence() == null ? event : event.getSequence().get(event.getSequence().size() - 1);
    }
-
+   
    /**
     * Attempt a hardware command multiple times if it throws an exception. If still doesn't
     * work after those tries, give up and declare exception
@@ -1199,12 +1207,59 @@ public class Engine {
                   newSeqLength > core_.getExposureSequenceMaxLength(core_.getCameraDevice())) {
                return false;
             }
-            //CPCGTools added
+            //CPCGTools added 
             //camera exposure
             if (previousEvent.getTriggerTimes()!= null && nextEvent.getTriggerTimes() != null &&
-                  Integer.compare(previousEvent.getTriggerTimes(), nextEvent.getTriggerTimes()) != 0 &&
-                  !core_.isExposureSequenceable(core_.getCameraDevice())) {
+                  Integer.compare(previousEvent.getTriggerTimes(), nextEvent.getTriggerTimes()) != 0 
+                    /*&& !core_.isExposureSequenceable(core_.getCameraDevice())*/) {
                return false;
+            }
+            //
+            //check all properties in Trigger Group
+            if (previousEvent.getConfigTriggerPreset() != null && nextEvent.getConfigTriggerPreset() != null
+                    && !previousEvent.getConfigTriggerPreset().equals(nextEvent.getConfigTriggerPreset())) {
+               //check all properties in the channel
+               Configuration config1 = core_.getConfigData(previousEvent.getConfigTriggerGroup(), previousEvent.getConfigTriggerPreset());
+               Configuration config2 = core_.getConfigData(nextEvent.getConfigTriggerGroup(), nextEvent.getConfigTriggerPreset());
+               for (int i = 0; i < config1.size(); i++) {
+                  PropertySetting ps1 = config1.getSetting(i);
+                  String deviceName = ps1.getDeviceLabel();
+                  String propName = ps1.getPropertyName();
+                  String propValue1 = ps1.getPropertyValue();
+                  PropertySetting ps2 = config2.getSetting(i);
+                  String propValue2 = ps2.getPropertyValue();
+                  if (!propValue1.equals(propValue2)) {
+                     if (!core_.isPropertySequenceable(deviceName, propName)) {
+                        return false;
+                     }
+                     if (core_.getPropertySequenceMaxLength(deviceName, propName) < newSeqLength) {
+                        return false;
+                     }
+                  }
+               }
+            }
+            //check all properties in Noise Group
+            if (previousEvent.getConfigNoisePreset() != null && nextEvent.getConfigNoisePreset() != null
+                    && !previousEvent.getConfigNoisePreset().equals(nextEvent.getConfigNoisePreset())) {
+               //check all properties in the channel
+               Configuration config1 = core_.getConfigData(previousEvent.getConfigNoiseGroup(), previousEvent.getConfigNoisePreset());
+               Configuration config2 = core_.getConfigData(nextEvent.getConfigNoiseGroup(), nextEvent.getConfigNoisePreset());
+               for (int i = 0; i < config1.size(); i++) {
+                  PropertySetting ps1 = config1.getSetting(i);
+                  String deviceName = ps1.getDeviceLabel();
+                  String propName = ps1.getPropertyName();
+                  String propValue1 = ps1.getPropertyValue();
+                  PropertySetting ps2 = config2.getSetting(i);
+                  String propValue2 = ps2.getPropertyValue();
+                  if (!propValue1.equals(propValue2)) {
+                     if (!core_.isPropertySequenceable(deviceName, propName)) {
+                        return false;
+                     }
+                     if (core_.getPropertySequenceMaxLength(deviceName, propName) < newSeqLength) {
+                        return false;
+                     }
+                  }
+               }
             }
             //
          }
@@ -1220,6 +1275,7 @@ public class Engine {
 
          return true;
       } catch (Exception ex) {
+         if (previousEvents.get(0).acquisition_.isDebugMode()) {return false;}//CPCGTools debug in NetBeans Hack
          throw new RuntimeException(ex);
       }
    }
