@@ -461,11 +461,11 @@ public class Engine {
             break;
          }
          double exposure;
-         //CPCG added
+         //CPCG added - this is for adding stuff to meta data I think - I don't actually think this is needed but not sure.
          int triggerTimes;
-         String triggerConfig;
+         String triggerMode;
          try {
-            triggerConfig = event.getConfigTriggerGroup()== null ? core_.getCurrentConfig("TriggerMode") : event.getConfigTriggerGroup();
+            triggerMode = event.getTriggerMode()== null ? core_.getCurrentConfig("TriggerMode") : event.getTriggerMode();
          } catch (Exception ex) {
             //triggerConfig = "NOT FOUND";
             throw new RuntimeException("Couldnt get TriggerMode form core");
@@ -474,7 +474,9 @@ public class Engine {
             triggerTimes = event.getTriggerTimes() == null ? Integer.valueOf(core_.getProperty("HamamatsuHam_DCAM", "TRIGGER TIMES")): event.getTriggerTimes();
          } catch (Exception ex) {
             //triggerTimes = 0;
+            if (!event.acquisition_.isDebugMode()) {//CPCGTools debug in NetBeans Hack
             throw new RuntimeException("Couldnt get TriggerTimes form core");
+            }else{triggerTimes=0;}//CPCGTools debug in NetBeans Hack
          }
          //
          
@@ -598,8 +600,8 @@ public class Engine {
                   correspondingEvent = multiCamAdapterCameraEventLists.get(actualCamIndex).remove(0);
                }
             }
-            // add standard metadata - CPCGTools edited
-            if (triggerConfig.equals("Edge-Global-Reset")){
+            // add standard metadata - CPCGTools edited - not sure if this is needed... Maye only for when using exposure?
+            if (triggerMode.equals("Edge-Global-Reset")){
                 AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
                         currentTime - correspondingEvent.acquisition_.getStartTime_ms(), exposure);
             }else{
@@ -753,9 +755,10 @@ public class Engine {
 
 
          } catch (Exception ex) {
-            if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack 
+            if (!event.acquisition_.isDebugMode()) {//CPCGTools debug in NetBeans Hack 
             ex.printStackTrace();
             throw new HardwareControlException(ex.getMessage());
+            }//CPCGTools debug in NetBeans Hack 
          }
       }
 
@@ -898,13 +901,13 @@ public class Engine {
                   }
                   //CPCGTools added
                   //set trigger times - Maybe this should be moved... it could be slowing down the camera instead could just rely on check to see if it has changed....
-                     if (event.getTriggerTimes() != null){
-                         try {
-                            core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",event.getTriggerTimes());
-                         } catch (java.lang.Exception ex){
-                         //JAR: HACK BEWARE
-                         }
-                     }
+                    if (event.getTriggerTimes() != null){
+                        try {
+                           core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",event.getTriggerTimes());
+                        } catch (java.lang.Exception ex){
+                        //JAR: HACK BEWARE
+                        }
+                    }
                      //
                   //set other channel props
                   core_.setConfig(currentGroup, currentConfig);
@@ -1006,8 +1009,8 @@ public class Engine {
             @Override
             public void run() {
                try {  
-                String currentTriggerMode = event.getConfigTriggerPreset();
-                String prevTriggerMode = lastEvent_ == null ? null : lastEvent_.getConfigTriggerPreset();
+                String currentTriggerMode = event.getTriggerMode();
+                String prevTriggerMode = lastEvent_ == null ? null : lastEvent_.getTriggerMode();
                 boolean changeTriggerMode = currentTriggerMode != null &&
                       (prevTriggerMode == null || !prevTriggerMode.equals(currentTriggerMode));
                 if (changeTriggerMode) {
@@ -1026,8 +1029,8 @@ public class Engine {
             @Override
             public void run() {
                try {  
-                String currentNoiseMode = event.getConfigNoisePreset();
-                String prevNoiseMode = lastEvent_ == null ? null : lastEvent_.getConfigNoisePreset();
+                String currentNoiseMode = event.getNoiseMode();
+                String prevNoiseMode = lastEvent_ == null ? null : lastEvent_.getNoiseMode();
                 boolean changeNoiseMode = currentNoiseMode != null &&
                       (prevNoiseMode == null || !prevNoiseMode.equals(currentNoiseMode));
                 if (changeNoiseMode) {
@@ -1216,11 +1219,11 @@ public class Engine {
             }
             //
             //check all properties in Trigger Group
-            if (previousEvent.getConfigTriggerPreset() != null && nextEvent.getConfigTriggerPreset() != null
-                    && !previousEvent.getConfigTriggerPreset().equals(nextEvent.getConfigTriggerPreset())) {
+            if (previousEvent.getTriggerMode() != null && nextEvent.getTriggerMode() != null
+                    && !previousEvent.getTriggerMode().equals(nextEvent.getTriggerMode())) {
                //check all properties in the channel
-               Configuration config1 = core_.getConfigData(previousEvent.getConfigTriggerGroup(), previousEvent.getConfigTriggerPreset());
-               Configuration config2 = core_.getConfigData(nextEvent.getConfigTriggerGroup(), nextEvent.getConfigTriggerPreset());
+               Configuration config1 = core_.getConfigData("TriggerMode", previousEvent.getTriggerMode());
+               Configuration config2 = core_.getConfigData("TriggerMode", nextEvent.getTriggerMode());
                for (int i = 0; i < config1.size(); i++) {
                   PropertySetting ps1 = config1.getSetting(i);
                   String deviceName = ps1.getDeviceLabel();
@@ -1239,11 +1242,11 @@ public class Engine {
                }
             }
             //check all properties in Noise Group
-            if (previousEvent.getConfigNoisePreset() != null && nextEvent.getConfigNoisePreset() != null
-                    && !previousEvent.getConfigNoisePreset().equals(nextEvent.getConfigNoisePreset())) {
+            if (previousEvent.getNoiseMode() != null && nextEvent.getNoiseMode() != null
+                    && !previousEvent.getNoiseMode().equals(nextEvent.getNoiseMode())) {
                //check all properties in the channel
-               Configuration config1 = core_.getConfigData(previousEvent.getConfigNoiseGroup(), previousEvent.getConfigNoisePreset());
-               Configuration config2 = core_.getConfigData(nextEvent.getConfigNoiseGroup(), nextEvent.getConfigNoisePreset());
+               Configuration config1 = core_.getConfigData("Camera Noise Mode", previousEvent.getNoiseMode());
+               Configuration config2 = core_.getConfigData("Camera Noise Mode", nextEvent.getNoiseMode());
                for (int i = 0; i < config1.size(); i++) {
                   PropertySetting ps1 = config1.getSetting(i);
                   String deviceName = ps1.getDeviceLabel();

@@ -88,11 +88,10 @@ public class AcquisitionEvent {
    private SpecialFlag specialFlag_;
    
    //CPCGTools added
-   private String configTriggerGroup_, configTriggerPreset_ = null;
-   private String configNoiseGroup_, configNoisePreset_ = null;
+   private String triggerMode_ = null;
+   private String noiseMode_ = null;
    private Integer triggerTimes_ = null; //leave null to keep trigger times
    private ThreeTuple laserInfo_ = null; //leave null to keep laser unchanged
-   private boolean triggerTimesSequenced_ = false, configTriggerGroupSequenced_ = false, configNoiseGroupSequenced_ = false;
     //
 
    public AcquisitionEvent(AcquisitionAPI acq) {
@@ -117,11 +116,6 @@ public class AcquisitionEvent {
       HashSet<Double> yPosSet = new HashSet<Double>();
       TreeSet<Double> exposureSet = new TreeSet<Double>();
       TreeSet<String> configSet = new TreeSet<String>();
-      //CPCGTools added
-      TreeSet<Integer> triggerTimesSet = new TreeSet<Integer>();
-      TreeSet<String> configTriggerSet = new TreeSet<String>();
-      TreeSet<String> configNoiseSet = new TreeSet<String>();
-      //
       for (int i = 0; i < sequence_.size(); i++) {
          if (sequence_.get(i).zPosition_ != null) {
             zPosSet.add(sequence_.get(i).zPosition_);
@@ -138,17 +132,6 @@ public class AcquisitionEvent {
          if (sequence_.get(i).configPreset_ != null) {
             configSet.add(sequence_.get(i).getConfigPreset());
          }
-         //CPCGTools added ->Since none of these can be sequenced, I don't think this is relevent but not 100% sure.
-         if (sequence_.get(i).triggerTimes_ != null) {
-            triggerTimesSet.add(sequence_.get(i).getTriggerTimes());
-         }
-        if (sequence_.get(i).configTriggerPreset_ != null) {
-              configTriggerSet.add(sequence_.get(i).getConfigTriggerPreset());
-        }
-        if (sequence_.get(i).configNoisePreset_ != null) {
-              configNoiseSet.add(sequence_.get(i).getConfigNoisePreset());
-        }
-        //
       }
       //TODO: add SLM sequences
       exposureSequenced_ = exposureSet.size() > 1;
@@ -162,15 +145,12 @@ public class AcquisitionEvent {
             }
          exposure_ = sequence.get(0).exposure_;
       };
-       //CPCGTools added -> Need triggerSequenced_.... can ask or simply do triggerSequenced = exposureSet.size() > 1; or simply just know that it is NOT going to be sequenced...
-       triggerTimesSequenced_ = triggerTimesSet.size() > 1;
-       configTriggerGroupSequenced_ = configTriggerSet.size() > 1;
-       configNoiseGroupSequenced_ = configNoiseSet.size() > 1;;
-        if (sequence_.get(0).triggerTimes_ != null && !triggerTimesSequenced_) {
-            triggerTimes_ = sequence_.get(0).getTriggerTimes();
-        }
-        //Do I need the other groups here?!?!
-        //
+      //CPCGTools added - Since nothing can be sequenced I am adding and to avoid issues I was having in code, I am going to help sequences here take the first one
+      triggerTimes_ = sequence.get(0).triggerTimes_;
+      laserInfo_ = sequence.get(0).laserInfo_;
+      triggerMode_ = sequence.get(0).triggerMode_;
+      noiseMode_ = sequence.get(0).noiseMode_;
+      //
    }
 
    public AcquisitionEvent copy() {
@@ -191,10 +171,8 @@ public class AcquisitionEvent {
       e.timeout_ms_ = timeout_ms_;
       e.setTags(tags_);
       //CPCGTools added
-      e.configTriggerPreset_ = configTriggerPreset_;
-      e.configTriggerGroup_ = configTriggerGroup_;
-      e.configNoiseGroup_ = configNoiseGroup_;
-      e.configNoisePreset_= configNoisePreset_;
+      e.triggerMode_ = triggerMode_;
+      e.noiseMode_= noiseMode_;
       e.triggerTimes_=triggerTimes_;
       e.exposure_=exposure_;//Not clear to me why this is not included.... -> don't have access....
       e.laserInfo_ = laserInfo_;
@@ -254,18 +232,12 @@ public class AcquisitionEvent {
             json.put("config_group", configGroup);
          }
          //CPCGTools added 
-         if (e.hasConfigTriggerGroup()) {
-            JSONArray configTriggerGroup = new JSONArray();
-            configTriggerGroup.put( e.configTriggerGroup_);
-            configTriggerGroup.put( e.configTriggerPreset_);
-            json.put("config_trigger_group", configTriggerGroup);
+         if (e.hasTriggerMode()) {           
+            json.put("trigger_mode", e.triggerMode_);
          }
          
-         if (e.hasConfigNoiseGroup()) {
-            JSONArray configNoiseGroup = new JSONArray();
-            configNoiseGroup.put( e.configTriggerGroup_);
-            configNoiseGroup.put( e.configNoisePreset_);
-            json.put("config_noise_group", configNoiseGroup);
+         if (e.hasNoiseMode()) {
+            json.put("noise_mode", e.noiseMode_);
          }
          
          if (e.triggerTimes_ != null) {
@@ -407,15 +379,13 @@ public class AcquisitionEvent {
          
          //CPCGTools added
          // Config group for Trigger setting 
-         if (json.has("config_trigger_group")) {
-            event.configTriggerGroup_ = json.getJSONArray("config_trigger_group").getString(0);
-            event.configTriggerPreset_ = json.getJSONArray("config_trigger_group").getString(1);
+         if (json.has("trigger_mode")) {
+            event.triggerMode_ = json.getString("trigger_mode");
          }
          
          // Config group for Noise setting 
-         if (json.has("config_noise_group")) {
-            event.configNoiseGroup_ = json.getJSONArray("config_noise_group").getString(0);
-            event.configNoisePreset_ = json.getJSONArray("config_noise_group").getString(1);
+         if (json.has("noise_mode")) {
+            event.noiseMode_ = json.getString("noise_mode");
          }
          
          if (json.has("triggger_times")) {
@@ -604,44 +574,28 @@ public class AcquisitionEvent {
    
    //CPCGTools added
    //JAR: I added various parameters here - not sure if all of them are necessary. 
-   public boolean hasConfigTriggerGroup() {
-      return configTriggerPreset_ != null && configTriggerGroup_ != null;
+   public boolean hasTriggerMode() {
+      return triggerMode_ != null;
    }
 
-   public String getConfigTriggerPreset() {
-      return configTriggerPreset_;
+   public String getTriggerMode() {
+      return triggerMode_;
    }
 
-   public String getConfigTriggerGroup() {
-      return configTriggerGroup_;
-   }
-
-   public void setConfigTriggerPreset(String config) {
-      configTriggerPreset_ = config;
-   }
-
-   public void setConfigTriggerGroup(String group) {
-      configTriggerGroup_ = group;
+   public void setTriggerMode(String mode) {
+      triggerMode_ = mode;
    }
    
-   public boolean hasConfigNoiseGroup() {
-      return configNoisePreset_ != null && configNoiseGroup_ != null;
+   public boolean hasNoiseMode() {
+      return noiseMode_ != null;
    }
    
-   public String getConfigNoisePreset() {
-      return configNoisePreset_;
-   }
-
-   public String getConfigNoiseGroup() {
-      return configNoiseGroup_;
+   public String getNoiseMode() {
+      return noiseMode_;
    }
    
-   public void setConfigNoisePreset(String config) {
-      configNoisePreset_ = config;
-   }
-
-   public void setConfigNoiseGroup(String group) {
-      configNoiseGroup_ = group;
+   public void setNoiseMode(String mode) {
+      noiseMode_ = mode;
    }
 
    public Integer getTriggerTimes() {
