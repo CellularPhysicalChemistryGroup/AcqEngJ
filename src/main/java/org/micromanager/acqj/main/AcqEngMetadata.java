@@ -1118,32 +1118,6 @@ public class AcqEngMetadata {
    public static final String TRIGGERTIMES = "TriggerTimes";
    //
    
-   /**
-    * Add the core set of image metadata that should be present in any
-    * acquisition 
-    * 
-    * //CPCGTools added 
-    * "double exposure" -> "int triggerTimes" in calling method
-    * "AcqEngMetadata.setExposure(tags, exposure);" -> AcqEngMetadata.setTriggerTimes(tags, triggerTimes);"
-    *
-    * @param tags image metadata
-    * @param event event
-    * @param elapsed_ms time since acq start
-    * @param triggerTimes camera number of triggers counted during exposure
-    */
-   public static void addImageMetadata(JSONObject tags, AcquisitionEvent event,
-            long elapsed_ms, int triggerTimes) {
-      try {
-          AcqEngMetadata.addImageMetadata(tags, event, elapsed_ms, 0.0);
-
-         AcqEngMetadata.setTriggerTimes(tags, triggerTimes);
-
-      } catch (Exception e) {
-         e.printStackTrace();
-         throw new RuntimeException("Problem adding image metadata");
-      }
-   }
-   
    public static void setTriggerTimes(JSONObject map, int tt) {
       try {
          map.put(TRIGGERTIMES, tt);

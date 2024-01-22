@@ -34,6 +34,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.lang.Double;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import mmcorej.CMMCore;
 import mmcorej.Configuration;
@@ -397,6 +399,16 @@ public class Engine {
             event.acquisition_.postNotification(
                     new AcqNotification(AcqNotification.Camera.class,
                             event.getAxesAsJSONString(), AcqNotification.Camera.PRE_SNAP));
+            
+            //CPCGTools JAR HACK
+            try {
+                core_.waitForDevice(core_.getCameraDevice());
+                core_.waitForDevice("Lasers");
+                core_.waitForSystem();
+            } catch (Exception ex) {
+                Logger.getLogger(Engine.class.getName()).log(Level.SEVERE, null, ex);
+            }          
+            //
             if (event.getCameraDeviceName() != null) {
                String currentCamera = core_.getCameraDevice();
                core_.setCameraDevice(event.getCameraDeviceName());
@@ -601,13 +613,9 @@ public class Engine {
                }
             }
             // add standard metadata - CPCGTools edited - not sure if this is needed... Maye only for when using exposure?
-            if (triggerMode.equals("Edge-Global-Reset")){
-                AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
+            AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
                         currentTime - correspondingEvent.acquisition_.getStartTime_ms(), exposure);
-            }else{
-                AcqEngMetadata.addImageMetadata(ti.tags, correspondingEvent,
-                        currentTime - correspondingEvent.acquisition_.getStartTime_ms(), triggerTimes);
-            }
+            AcqEngMetadata.setTriggerTimes(ti.tags, triggerTimes);
             // add user metadata specified in the event
             try {
                correspondingEvent.acquisition_.addTagsToTaggedImage(ti.tags, correspondingEvent.getTags());
@@ -906,20 +914,6 @@ public class Engine {
 
                boolean newChannel = currentConfig != null && (previousConfig == null || !previousConfig.equals(currentConfig));
                if ( newChannel ) {
-                  //set exposure
-                  if (event.getExposure() != null) {
-                     core_.setExposure(event.getExposure());
-                  }
-                  //CPCGTools added
-                  //set trigger times - Maybe this should be moved... it could be slowing down the camera instead could just rely on check to see if it has changed....
-                    if (event.getTriggerTimes() != null){
-                        try {
-                           core_.setProperty("HamamatsuHam_DCAM","TRIGGER TIMES",event.getTriggerTimes());
-                        } catch (java.lang.Exception ex){
-                        //JAR: HACK BEWARE
-                        }
-                    }
-                     //
                   //set other channel props
                   core_.setConfig(currentGroup, currentConfig);
                   // TODO: haven't tested if this is actually needed
@@ -999,13 +993,16 @@ public class Engine {
             @Override
             public void run() {
                try {  
-                String[] currentLaserProperties = event.getLaserProperties();
-                String[] prevLaserProperties = lastEvent_ == null ? null : lastEvent_.getLaserProperties();
-                boolean changeLaserProperties = currentLaserProperties != null &&
-                      (prevLaserProperties == null || !Arrays.equals(prevLaserProperties, currentLaserProperties));
-                if (changeLaserProperties) {
-                   core_.setProperty(currentLaserProperties[0],currentLaserProperties[1],currentLaserProperties[2]);
-                }
+                Set<java.util.Map.Entry<String[],String>> currentLaserProperties = event.getLaserProperties();
+                for (java.util.Map.Entry<String[],String> e : currentLaserProperties){
+                    if(!java.util.Objects.isNull(lastEvent_)){
+                        String prevVal = lastEvent_.getLaserProperty(e.getKey());
+                        if((!java.util.Objects.isNull(prevVal))&&(prevVal.equals(e.getValue()))){
+                            continue;
+                        }
+                    }
+                    core_.setProperty(e.getKey()[0],e.getKey()[1],e.getValue());
+                }                
                } catch (Exception ex) {
                     if (event.acquisition_.isDebugMode()) {return;}//CPCGTools debug in NetBeans Hack
                     throw new HardwareControlException(ex.getMessage());

@@ -91,8 +91,8 @@ public class AcquisitionEvent {
    private String triggerMode_ = null;
    private String noiseMode_ = null;
    private Integer triggerTimes_ = null; //leave null to keep trigger times
-   private ThreeTuple laserInfo_ = null; //leave null to keep laser unchanged
-    //
+   private Map<String[], String> laserInfo_ = new HashMap<>(); //leave null to keep laser unchanged
+   //
 
    public AcquisitionEvent(AcquisitionAPI acq) {
       acquisition_ = (Acquisition) acq;
@@ -175,7 +175,7 @@ public class AcquisitionEvent {
       e.noiseMode_= noiseMode_;
       e.triggerTimes_=triggerTimes_;
       e.exposure_=exposure_;//Not clear to me why this is not included.... -> don't have access....
-      e.laserInfo_ = laserInfo_;
+      e.laserInfo_ = new HashMap<>(this.laserInfo_);
       //
       return e;
    }
@@ -245,11 +245,17 @@ public class AcquisitionEvent {
          }
          
          if (e.laserInfo_ != null) {
-            JSONArray laser = new JSONArray();
-            laser.put(e.laserInfo_.dev);
-            laser.put(e.laserInfo_.prop);
-            laser.put(e.laserInfo_.val);
-            json.put("laser_info", laser);
+            JSONArray lasers = new JSONArray();
+            for (java.util.Map.Entry<String[],String> t : e.laserInfo_.entrySet()) {
+               JSONArray laser = new JSONArray();
+               laser.put(t.getKey()[0]);
+               laser.put(t.getKey()[1]);
+               laser.put(t.getValue());
+               lasers.put(laser);
+             }
+            if (lasers.length() > 0) {
+               json.put("laser_info", lasers);
+            }
          }
          //
          
@@ -391,10 +397,16 @@ public class AcquisitionEvent {
          if (json.has("triggger_times")) {
             event.triggerTimes_ = json.getInt("trigger_times");
          }
-         
-         JSONArray laser = json.getJSONArray("laser_info");
-         event.laserInfo_ = new ThreeTuple(laser.getString(0), laser.getString(1), laser.getString(2));      
-         //
+                  
+         if (json.has("laser_info")) {
+            JSONArray lasers = json.getJSONArray("laser_info");
+            for (int i = 0; i < lasers.length(); i++) {
+               JSONArray laser = lasers.getJSONArray(i);
+               String[] key = {laser.getString(0),laser.getString(1)};
+               event.laserInfo_.put(key, laser.getString(2));
+            }
+         }
+        //
 
          if (json.has("stage_positions")) {
             JSONArray stagePositions = json.getJSONArray("stage_positions");
@@ -602,8 +614,12 @@ public class AcquisitionEvent {
       return triggerTimes_;
    }
    
-   public String[] getLaserProperties() {
-      return laserInfo_.toArray();
+   public Set<java.util.Map.Entry<String[],String>> getLaserProperties() {
+      return laserInfo_.entrySet();
+   }
+   
+   public String getLaserProperty(String[] key) {
+      return laserInfo_.get(key);
    }
 
    public void setTriggerTimes(int triggerTimes) {
@@ -611,7 +627,7 @@ public class AcquisitionEvent {
    }
 
    public void setLaserProperty(String device, String property, String value) {
-      laserInfo_ = new ThreeTuple(device, property, value);
+      laserInfo_.put(new String[]{device, property}, value);
    }
    //
 
